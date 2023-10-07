@@ -1,10 +1,5 @@
 # Configures a web server for deployment of web_static.
 
-# Ensure Nginx is installed
-package { 'nginx':
-  ensure => 'installed',
-}
-
 # Nginx configuration file
 $nginx_conf = "server {
     listen 80 default_server;
@@ -29,87 +24,68 @@ $nginx_conf = "server {
     }
 }"
 
+package { 'nginx':
+  ensure   => 'present',
+  provider => 'apt'
+} ->
 
-# Ensure directories are created
 file { '/data':
-  ensure => 'directory',
-  owner  => 'ubuntu',
-  group  => 'ubuntu',
-}
+  ensure  => 'directory'
+} ->
 
 file { '/data/web_static':
-  ensure => 'directory',
-  owner  => 'root',
-  group  => 'root',
-}
+  ensure => 'directory'
+} ->
 
 file { '/data/web_static/releases':
-  ensure => 'directory',
-  owner  => 'root',
-  group  => 'root',
-}
-
-file { '/data/web_static/shared':
-  ensure => 'directory',
-  owner  => 'root',
-  group  => 'root',
-}
+  ensure => 'directory'
+} ->
 
 file { '/data/web_static/releases/test':
-  ensure => 'directory',
-  owner  => 'root',
-  group  => 'root',
-}
+  ensure => 'directory'
+} ->
+
+file { '/data/web_static/shared':
+  ensure => 'directory'
+} ->
 
 file { '/data/web_static/releases/test/index.html':
-  content => '<html>
-                <head>
-                </head>
-                <body>
-                  Holberton School
-                </body>
-              </html>',
-  owner   => 'root',
-  group   => 'root',
-}
+  ensure  => 'present',
+  content => "Holberton School Puppet\n"
+} ->
 
-# Ensure symbolic link is created
 file { '/data/web_static/current':
   ensure => 'link',
-  target => '/data/web_static/releases/test',
-  owner  => 'root',
-  group  => 'root',
+  target => '/data/web_static/releases/test'
+} ->
+
+exec { 'chown -R ubuntu:ubuntu /data/':
+  path => '/usr/bin/:/usr/local/bin/:/bin/'
 }
 
-# Configure Nginx
+file { '/var/www':
+  ensure => 'directory'
+} ->
+
+file { '/var/www/html':
+  ensure => 'directory'
+} ->
+
+file { '/var/www/html/index.html':
+  ensure  => 'present',
+  content => "Holberton School Nginx\n"
+} ->
+
+file { '/var/www/html/404.html':
+  ensure  => 'present',
+  content => "Ceci n'est pas une page\n"
+} ->
+
 file { '/etc/nginx/sites-available/default':
-  content => "server {
-                listen 80 default_server;
-                listen [::]:80 default_server;
+  ensure  => 'present',
+  content => $nginx_conf
+} ->
 
-                server_name _;
-
-                location /hbnb_static {
-                    alias /data/web_static/current/;
-                }
-
-                location /redirect_me {
-                    return 301 http://www.holbertonschool.com/;
-                }
-
-                error_page 404 /custom_404.html;
-                location = /custom_404.html {
-                    root /usr/share/nginx/html;
-                    internal;
-                }
-              }",
-  owner  => 'root',
-  group  => 'root',
-}
-
-# Restart Nginx
-service { 'nginx':
-  ensure    => 'running',
-  enable    => true,
-  require   => File['/etc/nginx/sites-available/default'],
+exec { 'nginx restart':
+  path => '/etc/init.d/'
 }
